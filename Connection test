@@ -1,0 +1,87 @@
+#include "ESP8266WiFi.h"
+#include "PubSubClient.h"
+
+
+String led = "ArduBlock";
+const char mqtt_wifi_ssid[]="z......4";
+const char mqtt_wifi_pass[]="8......1";
+const char mqtt_broker[]="m7.wqtt.ru";
+const int mqtt_port=13184;
+const char mqtt_user[]="u_......2";
+const char mqtt_pass[]="TCP";
+const char mqtt_clientid[]="Ls......y";
+
+WiFiClient mqtt_wifiClient;
+PubSubClient mqtt_client(mqtt_wifiClient);
+
+char mqtt_payload[64];
+
+
+void mqtt_loop(){
+	if (!mqtt_client.connected()) {
+		mqtt_client.connect(mqtt_clientid,mqtt_user,mqtt_pass);
+		mqtt_subscribe();
+	}
+	if (mqtt_client.connected()) {
+ 	mqtt_client.loop();
+	}
+}
+
+void mqtt_subscribe(){
+
+ mqtt_client.subscribe(String(String("/Zvezda")).c_str());
+}
+
+double mqtt_payload2double(unsigned char *_payload, int _length)
+{
+  int i;
+  for (i = 0; i<_length && i<64; i++){
+    mqtt_payload[i] = _payload[i];
+  }
+  mqtt_payload[i] = 0;
+  return atof(mqtt_payload);
+}
+
+String mqtt_payload2string(unsigned char *_payload, int _length)
+{
+  int i;
+  for (i = 0; i<_length && i<64; i++){
+    mqtt_payload[i] = _payload[i];
+  }
+  mqtt_payload[i] = 0;
+  return String(mqtt_payload);
+}
+
+void mqtt_callback(char* _topic, unsigned char* _payload, unsigned int _payloadlength){
+	double varNum=mqtt_payload2double(_payload,_payloadlength);
+	String varText=mqtt_payload2string(_payload,_payloadlength);
+   if(String(_topic)==String(String("/Zvezda")))led=varText;
+}
+
+
+void setup() {
+  	delay(2000);
+	WiFi.begin(mqtt_wifi_ssid,mqtt_wifi_pass);
+	while (WiFi.status() != WL_CONNECTED){
+	delay(500);
+	}
+	randomSeed(micros());
+	mqtt_client.setServer(mqtt_broker, mqtt_port);
+	mqtt_client.setCallback(mqtt_callback);
+	mqtt_subscribe();
+
+    pinMode(4, OUTPUT);
+   digitalWrite(4, 1);
+
+}
+
+void loop() {
+    mqtt_client.publish(String(String("/Zvezda")).c_str(),String(String("ESP on rails!!!")).c_str());
+    pinMode(4, OUTPUT);
+     digitalWrite(4, 0);
+    delay(500);
+    pinMode(4, OUTPUT);
+     digitalWrite(4, 1);
+    delay(500);
+
+}
